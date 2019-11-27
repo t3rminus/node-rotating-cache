@@ -1,0 +1,24 @@
+{
+  "name": "node-rotating-cache",
+  "version": "1.0.0",
+  "description": "An in-memory cache that allows dropping values according to a certain criteria when the cache becomes full",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/t3rminus/node-rotating-cache.git"
+  },
+  "keywords": [
+    "cache",
+    "rotating",
+    "in-memory"
+  ],
+  "author": "Kevin S <kevin@chilicode.ca>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/t3rminus/node-rotating-cache/issues"
+  },
+  "homepage": "https://github.com/t3rminus/node-rotating-cache#readme"
+}
