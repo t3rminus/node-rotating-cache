@@ -1,3 +1,5 @@
+const deepCopy = require('deep-copy');
+
 const DEFAULT_OPTIONS = {
 	maxKeys: 2500,
 	stdTTL: -1,
@@ -13,11 +15,13 @@ const DEFAULT_OPTIONS = {
 	ttlScale: 1000
 };
 
+const ROTATE_TYPES = ['oldest','inactive','expiry'];
+
 module.exports = class RotatingCache {
 	constructor(options) {
 		this.data = {};
 		this.options = Object.assign({}, DEFAULT_OPTIONS, options);
-		if(!['oldest','inactive','expiry','none'].includes(this.options.rotateType)) {
+		if(![...ROTATE_TYPES, 'none'].includes(this.options.rotateType)) {
 			throw new Error(`Invalid rotation type specified: ${this.options.rotateType}`);
 		}
 		this.stats = {
@@ -37,7 +41,7 @@ module.exports = class RotatingCache {
 			this.del(key);
 		}
 
-		if(this.stats.keys + 1 >= this.options.maxKeys) {
+		if(this.stats.keys + 1 > this.options.maxKeys) {
 			let delKey;
 			switch(this.options.rotateType) {
 				case 'oldest':
@@ -63,7 +67,6 @@ module.exports = class RotatingCache {
 		this.stats.keySize += this._getKeySize(key);
 		this.stats.valueSize += size;
 
-
 		this.data[key] = {
 			value,
 			size,
@@ -73,26 +76,43 @@ module.exports = class RotatingCache {
 		};
 	}
 
+	mset(data) {
+		if(this.stats.keys + data.length > this.options.maxKeys && !ROTATE_TYPES.includes(this.options.rotateType)) {
+			throw new Error(`Cache limit of ${this.options.maxKeys} keys will be reached.`);
+		}
+
+		data.forEach(({ key, value, ttl }) => this.set(key, value, ttl));
+	}
+
 	get(key) {
 		key = this._makeKey(key);
 		if(this.data[key]) {
 			this.stats.hits += 1;
 			this.data[key].lastAccess = Date.now();
-			return this.data[key].value;
+			return this.options.useClones ? deepCopy(this.data[key].value) : this.data[key].value;
 		} else {
 			this.stats.misses += 1;
 		}
 	}
 
+	mget(keys) {
+		return keys.reduce((o,k) => { o[k] = this.get(k); return o; }, {});
+	}
+
 	del(key) {
 		key = this._makeKey(key);
 		if(!this.data[key]) {
-			throw new Error(`The specified key '${key}' does not exist`);
+			return 0;
 		}
 		this.stats.keySize -= this._getKeySize(key);
 		this.stats.valueSize -= this.data[key].size;
 		this.stats.keys -= 1;
 		delete this.data[key];
+		return 1;
+	}
+
+	mdel(keys) {
+		return keys.reduce((s,k) => s + this.del(k), 0);
 	}
 
 	ttl(key, ttl) {
